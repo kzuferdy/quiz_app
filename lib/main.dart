@@ -1,6 +1,6 @@
+import 'package:ar_app/main_page.dart';
 import 'package:flutter/material.dart';
 
-import 'view/quiz_view.dart';
 
 void main() {
   runApp(MyApp());
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
         
       ),
       debugShowCheckedModeBanner: false,
-      home: QuizView(),
+      home: MainPage(),
     );
   }
 }

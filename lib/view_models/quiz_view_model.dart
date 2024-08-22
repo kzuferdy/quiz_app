@@ -44,7 +44,7 @@ class QuizViewModel {
     if (_isQuestionLocked || _selectedOptionIndex == null) return;
 
     if (_selectedOptionIndex == _questions[_currentQuestionIndex].correctOptionIndex) {
-      _score++;
+      _score += 10;
       _isAnswerCorrect = true;
     } else {
       _isAnswerCorrect = false;
