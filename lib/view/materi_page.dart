@@ -34,6 +34,7 @@ class _MateriPageState extends State<MateriPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Materi'),
+        backgroundColor: Colors.red,
       ),
       body: pdfPath.isEmpty
           ? Center(child: CircularProgressIndicator())

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../controllers/quiz_controller.dart';
 
@@ -10,6 +12,30 @@ class _QuizViewState extends State<QuizView> {
   final QuizController _controller = QuizController();
   final TextEditingController _usernameController = TextEditingController();
   bool _quizStarted = false;
+
+  // Fungsi untuk mengirim hasil ke Google Sheets menggunakan Google Apps Script
+  Future<void> _submitToGoogleSheets(String username, int score) async {
+    final url = 'https://script.google.com/macros/s/AKfycbz4TgKAd9Vijtmdjfu6Ogqt_-fF0uoszC1njHw2bO6XadJXkLryFhQuYk-4A6yEl4xqVQ/exec'; // Ganti dengan URL dari Google Apps Script
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': username,
+          'score': score,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Data berhasil dikirim ke Google Sheets!');
+      } else {
+        print('Gagal mengirim data. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error mengirim data ke Google Sheets: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,294 +130,158 @@ class _QuizViewState extends State<QuizView> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          if (currentQuestion.questionText.length > 100) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: ListView(
-                children: [
-                  Card(
-                    elevation: 5.0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        "Pertanyaan ${_controller.viewModel.currentQuestionIndex + 1}: ${currentQuestion.questionText}",
-                        style: TextStyle(
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+          return Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: ListView(
+              children: [
+                if (currentQuestion.image != null) // Jika ada gambar
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Image.asset(currentQuestion.image!),
+                  ),
+                Card(
+                  elevation: 5.0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      "Pertanyaan ${_controller.viewModel.currentQuestionIndex + 1}: ${currentQuestion.questionText}",
+                      style: TextStyle(
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                  SizedBox(height: 20.0),
-                  ...currentQuestion.options.asMap().entries.map((entry) {
-                    int idx = entry.key;
-                    String option = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: ElevatedButton(
-                        onPressed: _controller.viewModel.isQuestionLocked ? null : () {
-                          setState(() {
-                            _controller.selectOption(idx);
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _controller.viewModel.selectedOptionIndex == idx
-                              ? (_controller.viewModel.isAnswerCorrect
-                                  ? Colors.green
-                                  : Colors.red)
-                              : Colors.deepPurple[200],
-                          padding: EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          textStyle: TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        child: Text(option),
-                      ),
-                    );
-                  }).toList(),
-                  SizedBox(height: 20.0),
-                  if (!_controller.viewModel.isQuestionLocked)
-                    ElevatedButton(
-                      onPressed: () {
+                ),
+                SizedBox(height: 20.0),
+                ...currentQuestion.options.asMap().entries.map((entry) {
+                  int idx = entry.key;
+                  String option = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: ElevatedButton(
+                      onPressed: _controller.viewModel.isQuestionLocked ? null : () {
                         setState(() {
-                          _controller.lockAnswer();
+                          _controller.selectOption(idx);
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreenAccent[400],
-                        padding: EdgeInsets.symmetric(vertical: 14.0),
+                        backgroundColor: _controller.viewModel.selectedOptionIndex == idx
+                            ? (_controller.viewModel.isAnswerCorrect
+                                ? Colors.green
+                                : Colors.red)
+                            : Colors.deepPurple[200],
+                        padding: EdgeInsets.symmetric(vertical: 16.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         textStyle: TextStyle(
-                          fontSize: 18.0,
+                          fontSize: 16.0,
                           fontWeight: FontWeight.bold,
-                          color: Colors.yellow,
+                          color: Colors.white,
                         ),
                       ),
-                      child: Text("Kunci Jawaban"),
+                      child: Text(option),
                     ),
-                  if (_controller.viewModel.isQuestionLocked)
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _controller.nextQuestion();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreenAccent[400],
-                        padding: EdgeInsets.symmetric(vertical: 14.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.yellow,
-                        ),
+                  );
+                }).toList(),
+                SizedBox(height: 20.0),
+                if (!_controller.viewModel.isQuestionLocked)
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _controller.lockAnswer();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.lightGreenAccent[400],
+                      padding: EdgeInsets.symmetric(vertical: 14.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
-                      child: Text("Lanjut"),
-                    ),
-                  if (_controller.viewModel.currentQuestionIndex == _controller.viewModel.questions.length - 1)
-                    ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text("Skor Akhir"),
-                            content: Text("Nama Pengguna: ${_usernameController.text}\nSkor: ${_controller.viewModel.score}"),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  setState(() {
-                                    _quizStarted = false;
-                                    _controller.resetQuiz();
-                                  });
-                                },
-                                child: Text(
-                                  "Tutup",
-                                  style: TextStyle(
-                                    color: Colors.deepPurple,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightBlue[400],
-                        padding: EdgeInsets.symmetric(vertical: 14.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.yellow,
-                        ),
-                      ),
-                      child: Text("Lihat Skor Akhir"),
-                    ),
-                ],
-              ),
-            );
-          } else {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    elevation: 5.0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        "Pertanyaan ${_controller.viewModel.currentQuestionIndex + 1}: ${currentQuestion.questionText}",
-                        style: TextStyle(
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.yellow,
-                        ),
+                      textStyle: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
                       ),
                     ),
+                    child: Text("Kunci Jawaban"),
                   ),
-                  SizedBox(height: 20.0),
-                  ...currentQuestion.options.asMap().entries.map((entry) {
-                    int idx = entry.key;
-                    String option = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: ElevatedButton(
-                        onPressed: _controller.viewModel.isQuestionLocked ? null : () {
-                          setState(() {
-                            _controller.selectOption(idx);
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _controller.viewModel.selectedOptionIndex == idx
-                              ? (_controller.viewModel.isAnswerCorrect
-                                  ? Colors.green
-                                  : Colors.red)
-                              : Colors.deepPurple[200],
-                          padding: EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          textStyle: TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        child: Text(option),
+                if (_controller.viewModel.isQuestionLocked)
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _controller.nextQuestion();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.lightGreenAccent[400],
+                      padding: EdgeInsets.symmetric(vertical: 14.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
-                    );
-                  }).toList(),
-                  SizedBox(height: 20.0),
-                  if (!_controller.viewModel.isQuestionLocked)
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _controller.lockAnswer();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreenAccent[400],
-                        padding: EdgeInsets.symmetric(vertical: 14.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
-                        ),
+                      textStyle: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.yellow,
                       ),
-                      child: Text("Kunci Jawaban"),
                     ),
-                  if (_controller.viewModel.isQuestionLocked)
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _controller.nextQuestion();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreenAccent[400],
-                        padding: EdgeInsets.symmetric(vertical: 14.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.yellow,
-                        ),
-                      ),
-                      child: Text("Lanjut"),
-                    ),
-                  if (_controller.viewModel.currentQuestionIndex == _controller.viewModel.questions.length - 1)
-                    ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text("Skor Akhir"),
-                            content: Text("Nama Pengguna: ${_usernameController.text}\nSkor: ${_controller.viewModel.score}"),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  setState(() {
-                                    _quizStarted = false;
-                                    _controller.resetQuiz();
-                                  });
-                                },
-                                child: Text(
-                                  "Tutup",
-                                  style: TextStyle(
-                                    color: Colors.yellow,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                    child: Text("Lanjut"),
+                  ),
+                if (_controller.viewModel.currentQuestionIndex == _controller.viewModel.questions.length - 1)
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text("Skor Akhir"),
+                          content: Text("Nama Pengguna: ${_usernameController.text}\nSkor: ${_controller.viewModel.score}"),
+                          actions: [
+                            TextButton(
+                             onPressed: () async {
+                              Navigator.of(context).pop();
+                              // Panggil fungsi untuk mengirim hasil ke Google Sheets
+                              await _submitToGoogleSheets(
+                                _usernameController.text,
+                                _controller.viewModel.score,
+                              );
+                                setState(() {
+                                  _quizStarted = false;
+                                  _controller.resetQuiz();
+                                });
+                              },
+                              child: Text(
+                                "Tutup",
+                                style: TextStyle(
+                                  color: Colors.yellow,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightBlue[400],
-                        padding: EdgeInsets.symmetric(vertical: 14.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ],
                         ),
-                        textStyle: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.yellow,
-                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.lightBlue[400],
+                      padding: EdgeInsets.symmetric(vertical: 14.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
-                      child: Text("Lihat Skor Akhir"),
+                      textStyle: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.yellow,
+                      ),
                     ),
-                ],
-              ),
-            );
-          }
+                    child: Text("Lihat Skor Akhir"),
+                  ),
+              ],
+            ),
+          );
         },
       ),
     );
